@@ -6,7 +6,6 @@
 #include "ws2812.pio.h" // Biblioteca para controlar os LEDs WS2812
 #include "hardware/pwm.h" // Biblioteca para controlar o buzzer PWM
 
-
 // Definição dos pinos do Raspberry Pi Pico
 #define BUTTON_A_GPIO 5  // Botão A (Incrementa o número)
 #define BUTTON_B_GPIO 6 // Botão B (Decrementa o número)
@@ -21,7 +20,6 @@
 #define NUM_COLS 5
 #define NUM_LEDS (NUM_ROWS * NUM_COLS)
 
-
 // Configuração do PIO para os LEDs WS2812
 #define WS2812_PIO pio0 // Usamos o bloco PIO0
 #define WS2812_SM 0 // Usamos o state machine 0
@@ -31,7 +29,20 @@ const uint buzzer_frequencies[10] = {
     261, 293, 329, 349, 392, 440, 493, 523, 587, 659  
 };
 
+// Número atualmente exibido na matriz ao iniciar
+volatile uint8_t current_number = 0;
 
+// Estados dos botões
+volatile bool button_a_pressed = false;
+volatile bool button_b_pressed = false;
+
+// Estruturas para armazenar o estado dos botões (para debouncing)
+struct button_state {
+    bool debouncing;
+};
+
+struct button_state button_a_state = { false };
+struct button_state button_b_state = { false };
 
 
 // Função para enviar dados de cor para a matriz de LEDs WS2812
@@ -127,6 +138,16 @@ const bool digits[10][5][5] = {
 };
 
 
+// Atualiza a matriz de LEDs para exibir um número
+void update_led_matrix(uint8_t number) {
+    for (int row = 0; row < NUM_ROWS; row++) {
+        for (int col = 0; col < NUM_COLS; col++) {
+            bool on = digits[number][row][col];
+            pio_sm_put_blocking(WS2812_PIO, WS2812_SM, on ? 0x00FFFFFF : 0x00000000);
+        }
+    }
+}
+
 
 // Função para iniciar o buzzer e configurá-lo
 void setup_buzzer() {
@@ -151,31 +172,6 @@ void play_tone(uint number) {
 // Função para parar o som do buzzer
 void stop_tone() {
     pwm_set_gpio_level(BUZZER_PIN, 0);  // Desliga o buzzer
-}
-
-// Estruturas para armazenar o estado dos botões (para debouncing)
-struct button_state {
-    bool debouncing;
-};
-
-
-// Número atualmente exibido na matriz ao iniciar
-volatile uint8_t current_number = 0;
-
-struct button_state button_a_state = { false };
-struct button_state button_b_state = { false };
-volatile bool button_a_pressed = false;
-volatile bool button_b_pressed = false;
-
-
-// Atualiza a matriz de LEDs para exibir um número
-void update_led_matrix(uint8_t number) {
-    for (int row = 0; row < NUM_ROWS; row++) {
-        for (int col = 0; col < NUM_COLS; col++) {
-            bool on = digits[number][row][col];
-            put_pixel(on ? 0x00FFFFFF : 0x00000000);
-        }
-    }
 }
 
 // Função de callback para o debouncing dos botões
@@ -229,6 +225,7 @@ bool red_toggle(struct repeating_timer *t) {
 // Função principal
 int main() {
     stdio_init_all();
+
     gpio_init(RED_PIN);
     gpio_set_dir(RED_PIN, GPIO_OUT);
     gpio_put(RED_PIN, 0);
@@ -253,12 +250,14 @@ int main() {
     // Configuração do buzzer
     setup_buzzer();
 
+// Timer para piscar o LED vermelho
     struct repeating_timer timer;
     add_repeating_timer_ms(100, red_toggle, NULL, &timer);
 
+   
     while (1) {
-
-         if (button_a_pressed || button_b_pressed) {
+        // Se o botão A ou B estiver pressionado, toca o som correspondente
+        if (button_a_pressed || button_b_pressed) {
             play_tone(current_number);
         } else {
             stop_tone();
