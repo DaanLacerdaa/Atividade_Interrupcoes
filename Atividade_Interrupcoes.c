@@ -28,17 +28,17 @@
 
 // Frequências para os números 0 a 9 (em Hz)
 const uint buzzer_frequencies[10] = {
-    261,  // Dó (C4) - Número 0
-    293,  // Ré (D4) - Número 1
-    329,  // Mi (E4) - Número 2
-    349,  // Fá (F4) - Número 3
-    392,  // Sol (G4) - Número 4
-    440,  // Lá (A4) - Número 5
-    493,  // Si (B4) - Número 6
-    523,  // Dó (C5) - Número 7
-    587,  // Ré (D5) - Número 8
-    659   // Mi (E5) - Número 9 
+    261, 293, 329, 349, 392, 440, 493, 523, 587, 659  
 };
+
+// Número atualmente exibido na matriz ao iniciar
+volatile uint8_t current_number = 0;
+
+struct button_state button_a_state = { false };
+struct button_state button_b_state = { false };
+volatile bool button_a_pressed = false;
+volatile bool button_b_pressed = false;
+
 
 // Função para enviar dados de cor para a matriz de LEDs WS2812
 static inline void put_pixel(uint32_t pixel_grb) {
@@ -132,31 +132,31 @@ const bool digits[10][5][5] = {
     }
 };
 
-// Número atualmente exibido na matriz ao iniciar
-volatile uint8_t current_number = 0;
+
 
 // Função para iniciar o buzzer e configurá-lo
 void setup_buzzer() {
-    gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);  // Define o pino como saída PWM
-    uint slice = pwm_gpio_to_slice_num(BUZZER_PIN); // Obtém a "slice" do PWM associada ao pino
-    pwm_set_wrap(slice, 12500); // Ajusta a taxa de atualização
-    pwm_set_enabled(slice, true); // Habilita PWM
+    gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(BUZZER_PIN);
+    pwm_set_wrap(slice, 12500);
+    pwm_set_enabled(slice, true);
 }
 
-// Função para tocar um som correspondente ao número exibido
+// Função para tocar o som do número atual enquanto o botão estiver pressionado
 void play_tone(uint number) {
     uint slice = pwm_gpio_to_slice_num(BUZZER_PIN);
     uint freq = buzzer_frequencies[number];
 
-    // Calcula o divisor para gerar a frequência desejada
+    // Calcula o divisor de clock correto
     uint clock_div = (125000000 / (freq * 10));
 
     pwm_set_clkdiv(slice, clock_div);
-    pwm_set_gpio_level(BUZZER_PIN, 6250); // Define ciclo de trabalho (50%)
+    pwm_set_gpio_level(BUZZER_PIN, 6250);  // Liga o buzzer
+}
 
-    // Toca o som por 200ms e depois silencia
-    sleep_ms(200);
-    pwm_set_gpio_level(BUZZER_PIN, 0);
+// Função para parar o som do buzzer
+void stop_tone() {
+    pwm_set_gpio_level(BUZZER_PIN, 0);  // Desliga o buzzer
 }
 
 // Estruturas para armazenar o estado dos botões (para debouncing)
@@ -164,8 +164,8 @@ struct button_state {
     bool debouncing;
 };
 
-struct button_state button_a_state = { false };
-struct button_state button_b_state = { false };
+
+
 
 
 // Atualiza a matriz de LEDs para exibir um número
@@ -257,6 +257,12 @@ int main() {
     add_repeating_timer_ms(100, red_toggle, NULL, &timer);
 
     while (1) {
+
+         if (button_a_pressed || button_b_pressed) {
+            play_tone(current_number);
+        } else {
+            stop_tone();
+        }
         tight_loop_contents();
     }
 }
