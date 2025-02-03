@@ -49,7 +49,8 @@ target_link_libraries(Atividade_Interrupcoes
 pico_stdlib
 hardware_gpio
 hardware_pio
-hardware_irq)
+hardware_irq
+hardware_pwm)
 
 # Add the standard include files to the build
 target_include_directories(Atividade_Interrupcoes PRIVATE
