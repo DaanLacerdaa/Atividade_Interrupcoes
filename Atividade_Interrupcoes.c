@@ -1,24 +1,30 @@
-#include <stdio.h>
-#include "pico/stdlib.h"
-#include "hardware/gpio.h"
-#include "hardware/pio.h"
-#include "hardware/irq.h"
-#include "ws2812.pio.h"
-#include "hardware/pwm.h"
+#include <stdio.h> // Biblioteca para inicializar a comunicação serial
+#include "pico/stdlib.h" // Biblioteca para inicializar a comunicação serial
+#include "hardware/gpio.h" // Biblioteca para acessar os GPIOs do Raspberry Pi Pico W
+#include "hardware/pio.h" // Biblioteca para acessar os periféricos do PIO
+#include "hardware/irq.h" // Biblioteca para gerenciar interrupções
+#include "ws2812.pio.h" // Biblioteca para controlar os LEDs WS2812
+#include "hardware/pwm.h" // Biblioteca para controlar o buzzer PWM
 
-#define BUTTON_A_GPIO 5
-#define BUTTON_B_GPIO 6
-#define BUZZER_PIN 21   
-#define GREEN_PIN 11
-#define BLUE_PIN 12
-#define RED_PIN 13
-#define WS2812_PIN 7
+
+// Definição dos pinos do Raspberry Pi Pico
+#define BUTTON_A_GPIO 5  // Botão A (Incrementa o número)
+#define BUTTON_B_GPIO 6 // Botão B (Decrementa o número)
+#define BUZZER_PIN 21   // Buzzer
+#define GREEN_PIN 11 // LED RGB (Canal Verde)
+#define BLUE_PIN 12 // LED RGB (Canal Azul)
+#define RED_PIN 13 // LED RGB (Canal Vermelho)
+#define WS2812_PIN 7   // Pino onde está conectada a matriz de LEDs WS2812
+
+// Definição das dimensões da matriz de LEDs WS2812
 #define NUM_ROWS 5
 #define NUM_COLS 5
 #define NUM_LEDS (NUM_ROWS * NUM_COLS)
 
-#define WS2812_PIO pio0
-#define WS2812_SM 0
+
+// Configuração do PIO para os LEDs WS2812
+#define WS2812_PIO pio0 // Usamos o bloco PIO0
+#define WS2812_SM 0 // Usamos o state machine 0
 
 // Frequências para os números 0 a 9 (em Hz)
 const uint buzzer_frequencies[10] = {
@@ -34,11 +40,12 @@ const uint buzzer_frequencies[10] = {
     659   // Mi (E5) - Número 9 
 };
 
-
+// Função para enviar dados de cor para a matriz de LEDs WS2812
 static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(WS2812_PIO, WS2812_SM, pixel_grb << 8u);
 }
 
+// Inicializa o PIO para controlar os LEDs WS2812
 void ws2812_init() {
     PIO pio = WS2812_PIO;
     int sm = WS2812_SM;
@@ -46,46 +53,89 @@ void ws2812_init() {
     ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, false);
 }
 
+
+// Mapeamento físico da matriz de LEDs 
 uint8_t get_led_index(uint8_t row, uint8_t col) {
     return (row % 2 == 0) ? (row * NUM_COLS + col) : (row * NUM_COLS + (NUM_COLS - 1 - col));
 }
-
+// Definição dos números 0-9 na matriz 5x5 de LEDs
 const bool digits[10][5][5] = {
     { // 0
-        {1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}
+        {1,1,1,1,1},
+         {1,0,0,0,1},
+          {1,0,0,0,1},
+           {1,0,0,0,1}, 
+           {1,1,1,1,1}
     },
     { // 1
-        {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,1,1,0,0}, {0,0,1,0,0}
+        {0,0,1,0,0},
+        {0,0,1,0,0},
+        {0,0,1,0,0},
+        {0,1,1,0,0}, 
+        {0,0,1,0,0}
     },
     { // 2
-        {1,1,1,1,1}, {1,0,0,0,0}, {1,1,1,1,1}, {0,0,0,0,1}, {1,1,1,1,1}
+        {1,1,1,1,1}, 
+        {1,0,0,0,0}, 
+        {1,1,1,1,1},
+        {0,0,0,0,1},
+        {1,1,1,1,1}
     },
     { // 3
-        {1,1,1,1,1}, {0,0,0,0,1}, {0,1,1,1,1}, {0,0,0,0,1}, {1,1,1,1,1}
+        {1,1,1,1,1},
+        {0,0,0,0,1},
+        {0,1,1,1,1}, 
+        {0,0,0,0,1},
+        {1,1,1,1,1}
     },
     { // 4 
-        {1,0,0,0,0},{0,0,0,0,1}, {1,1,1,1,1},{1,0,0,0,1}, 
+        {1,0,0,0,0},
+        {0,0,0,0,1},
+        {1,1,1,1,1},
+        {1,0,0,0,1}, 
         {1,0,0,0,1}
     },
     { // 5
-        {1,1,1,1,1}, {0,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,0}, {1,1,1,1,1}
+        {1,1,1,1,1},
+        {0,0,0,0,1},
+        {1,1,1,1,1},
+        {1,0,0,0,0},
+        {1,1,1,1,1}
     },
     { // 6
-        {1,1,1,1,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,0}, {1,1,1,1,1}
+        {1,1,1,1,1},
+        {1,0,0,0,1},
+        {1,1,1,1,1},
+        {1,0,0,0,0},
+        {1,1,1,1,1}
     },
     { // 7 
-      {0,0,0,0,1}, {0,1,0,0,0},{0,0,1,0,0}, {0,0,0,1,0},   {1,1,1,1,1}
+        {0,0,0,0,1},
+        {0,1,0,0,0},
+        {0,0,1,0,0},
+        {0,0,0,1,0}, 
+        {1,1,1,1,1}
     },
     { // 8
-        {1,1,1,1,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,1,1,1,1}
+        {1,1,1,1,1},
+        {1,0,0,0,1}, 
+        {1,1,1,1,1},
+        {1,0,0,0,1}, 
+        {1,1,1,1,1}
     },
     { // 9
-        {1,1,1,1,1}, {0,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,1,1,1,1}
+        {1,1,1,1,1},
+        {0,0,0,0,1},
+        {1,1,1,1,1},
+        {1,0,0,0,1},
+        {1,1,1,1,1}
     }
 };
 
+// Número atualmente exibido na matriz ao iniciar
 volatile uint8_t current_number = 0;
 
+// Função para iniciar o buzzer e configurá-lo
 void setup_buzzer() {
     gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);  // Define o pino como saída PWM
     uint slice = pwm_gpio_to_slice_num(BUZZER_PIN); // Obtém a "slice" do PWM associada ao pino
@@ -109,6 +159,7 @@ void play_tone(uint number) {
     pwm_set_gpio_level(BUZZER_PIN, 0);
 }
 
+// Estruturas para armazenar o estado dos botões (para debouncing)
 struct button_state {
     bool debouncing;
 };
@@ -116,6 +167,8 @@ struct button_state {
 struct button_state button_a_state = { false };
 struct button_state button_b_state = { false };
 
+
+// Atualiza a matriz de LEDs para exibir um número
 void update_led_matrix(uint8_t number) {
     for (int row = 0; row < NUM_ROWS; row++) {
         for (int col = 0; col < NUM_COLS; col++) {
@@ -124,6 +177,8 @@ void update_led_matrix(uint8_t number) {
         }
     }
 }
+
+// Função de callback para o debouncing dos botões
 int64_t debounce_callback(alarm_id_t id, void *user_data) {
     uint gpio = (uint) user_data;
     if (!gpio_get(gpio)) {
@@ -145,7 +200,7 @@ int64_t debounce_callback(alarm_id_t id, void *user_data) {
     }
     return 0;
 }
-
+// Função de tratamento de interrupção para os botões
 void gpio_irq_handler(uint gpio, uint32_t events) {
     if (events & GPIO_IRQ_EDGE_FALL) {
         struct button_state *state;
@@ -163,7 +218,7 @@ void gpio_irq_handler(uint gpio, uint32_t events) {
         }
     }
 }
-
+ // Função para inicializar o LED vermelho
 bool red_toggle(struct repeating_timer *t) {
     static bool red_on = false;
     red_on = !red_on;
@@ -171,6 +226,7 @@ bool red_toggle(struct repeating_timer *t) {
     return true;
 }
 
+// Função principal
 int main() {
     stdio_init_all();
     gpio_init(RED_PIN);
