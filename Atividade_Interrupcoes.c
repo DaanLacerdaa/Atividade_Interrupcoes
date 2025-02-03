@@ -32,18 +32,19 @@ const uint buzzer_frequencies[10] = {
 // Número atualmente exibido na matriz ao iniciar
 volatile uint8_t current_number = 0;
 
-// Estados dos botões
-volatile bool button_a_pressed = false;
-volatile bool button_b_pressed = false;
 
 // Estruturas para armazenar o estado dos botões (para debouncing)
 struct button_state {
     bool debouncing;
+    bool pressed;
+
 };
 
-struct button_state button_a_state = { false };
-struct button_state button_b_state = { false };
+struct button_state button_a_state = { false, false };
+struct button_state button_b_state = { false , false};
 
+// Protótipos de funções
+int64_t stop_tone_alarm(alarm_id_t id, void *user_data);
 
 // Função para enviar dados de cor para a matriz de LEDs WS2812
 static inline void put_pixel(uint32_t pixel_grb) {
@@ -153,7 +154,7 @@ void update_led_matrix(uint8_t number) {
 void setup_buzzer() {
     gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
     uint slice = pwm_gpio_to_slice_num(BUZZER_PIN);
-    pwm_set_wrap(slice, 12500);
+    pwm_set_wrap(slice, 1000);
     pwm_set_enabled(slice, true);
 }
 
@@ -161,31 +162,38 @@ void setup_buzzer() {
 void play_tone(uint number) {
     uint slice = pwm_gpio_to_slice_num(BUZZER_PIN);
     uint freq = buzzer_frequencies[number];
-
-    // Calcula o divisor de clock correto
-    uint clock_div = (125000000 / (freq * 10));
-
+    uint clock_div = (125000000.0f / (freq * 1000.0f));
+    
     pwm_set_clkdiv(slice, clock_div);
-    pwm_set_gpio_level(BUZZER_PIN, 6250);  // Liga o buzzer
+    pwm_set_gpio_level(BUZZER_PIN, 500); // 50% duty cycle
 }
 
-// Função para parar o som do buzzer
 void stop_tone() {
-    pwm_set_gpio_level(BUZZER_PIN, 0);  // Desliga o buzzer
+    pwm_set_gpio_level(BUZZER_PIN, 0);
+}
+
+// Alarmes para controle do som
+int64_t stop_tone_alarm(alarm_id_t id, void *user_data) {
+    stop_tone();
+    return 0;
 }
 
 // Função de callback para o debouncing dos botões
 int64_t debounce_callback(alarm_id_t id, void *user_data) {
     uint gpio = (uint) user_data;
     if (!gpio_get(gpio)) {
+        uint8_t new_number = current_number;
+        
         if (gpio == BUTTON_A_GPIO) {
-            current_number = (current_number + 1) % 10;
+            new_number = (current_number + 1) % 10;
         } else if (gpio == BUTTON_B_GPIO) {
-            current_number = (current_number - 1 + 10) % 10;
+            new_number = (current_number - 1 + 10) % 10;
         }
 
-        play_tone(current_number); // Toca o som correspondente ao número
+        current_number = new_number;
+        play_tone(current_number);
         update_led_matrix(current_number);
+        add_alarm_in_ms(200, stop_tone_alarm, NULL, false);
     }
 
     gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL, true);
@@ -244,6 +252,7 @@ int main() {
     gpio_init(BUTTON_B_GPIO);
     gpio_set_dir(BUTTON_B_GPIO, GPIO_IN);
     gpio_pull_up(BUTTON_B_GPIO);
+
     gpio_set_irq_enabled_with_callback(BUTTON_A_GPIO, GPIO_IRQ_EDGE_FALL, true, gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BUTTON_B_GPIO, GPIO_IRQ_EDGE_FALL, true, gpio_irq_handler);
 
@@ -256,12 +265,7 @@ int main() {
 
    
     while (1) {
-        // Se o botão A ou B estiver pressionado, toca o som correspondente
-        if (button_a_pressed || button_b_pressed) {
-            play_tone(current_number);
-        } else {
-            stop_tone();
-        }
+       
         tight_loop_contents();
     }
 }
