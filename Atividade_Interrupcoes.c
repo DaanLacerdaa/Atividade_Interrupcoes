@@ -31,7 +31,7 @@ const uint buzzer_frequencies[10] = {
     493,  // Si (B4) - Número 6
     523,  // Dó (C5) - Número 7
     587,  // Ré (D5) - Número 8
-    659   // Mi (E5) - Número 9
+    659   // Mi (E5) - Número 9 
 };
 
 
@@ -119,11 +119,8 @@ struct button_state button_b_state = { false };
 void update_led_matrix(uint8_t number) {
     for (int row = 0; row < NUM_ROWS; row++) {
         for (int col = 0; col < NUM_COLS; col++) {
-            put_pixel(color);
-
-           bool on = digits[number][row][col];
-            uint32_t color = on ? 0x00FFFFFF : 0x00000000;
-            put_pixel(color);
+            bool on = digits[number][row][col];
+            put_pixel(on ? 0x00FFFFFF : 0x00000000);
         }
     }
 }
