@@ -42,11 +42,14 @@ pico_set_program_version(Atividade_Interrupcoes "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(Atividade_Interrupcoes 0)
-pico_enable_stdio_usb(Atividade_Interrupcoes 0)
+pico_enable_stdio_usb(Atividade_Interrupcoes 1)
 
 # Add the standard library to the build
 target_link_libraries(Atividade_Interrupcoes
-        pico_stdlib)
+pico_stdlib
+hardware_gpio
+hardware_pio
+hardware_irq)
 
 # Add the standard include files to the build
 target_include_directories(Atividade_Interrupcoes PRIVATE
