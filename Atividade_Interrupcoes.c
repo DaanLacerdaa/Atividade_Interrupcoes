@@ -31,13 +31,7 @@ const uint buzzer_frequencies[10] = {
     261, 293, 329, 349, 392, 440, 493, 523, 587, 659  
 };
 
-// Número atualmente exibido na matriz ao iniciar
-volatile uint8_t current_number = 0;
 
-struct button_state button_a_state = { false };
-struct button_state button_b_state = { false };
-volatile bool button_a_pressed = false;
-volatile bool button_b_pressed = false;
 
 
 // Função para enviar dados de cor para a matriz de LEDs WS2812
@@ -165,7 +159,13 @@ struct button_state {
 };
 
 
+// Número atualmente exibido na matriz ao iniciar
+volatile uint8_t current_number = 0;
 
+struct button_state button_a_state = { false };
+struct button_state button_b_state = { false };
+volatile bool button_a_pressed = false;
+volatile bool button_b_pressed = false;
 
 
 // Atualiza a matriz de LEDs para exibir um número
