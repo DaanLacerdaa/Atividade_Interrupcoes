@@ -1,7 +1,8 @@
 
 # Controle de Matriz de LEDs WS2812 com Raspberry Pi Pico W
 
-[![Vídeo no YouTube](https://img.youtube.com/vi/lQRsQzGeNbo/0.jpg)](https://www.youtube.com/watch?v=lQRsQzGeNbo)
+[![Vídeo no YouTube](https://img.youtube.com/vi/lQRsQzGeNbo/0.jpg)](https://www.youtube.com/watch?v=lQRsQzGeNbo)  
+[Vídeo no YouTube](https://www.youtube.com/watch?v=lQRsQzGeNbo)  
 
 [Simulação Wokwi](https://wokwi.com/projects/421821924530235393)
 
